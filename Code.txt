@@ -1,0 +1,219 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using AForge.Video;
+using AForge.Video.DirectShow;
+using AForge.Imaging.Filters;
+using AForge.Math.Geometry;
+using AForge;
+using System.Drawing.Imaging;
+using AForge.Imaging;
+using IntPoint = AForge.IntPoint;
+using Point = System.Drawing.Point;
+
+namespace FilterApplication
+{    public partial class Form1 : Form
+    {
+        private FilterInfoCollection fillin;
+        private VideoCaptureDevice cap;
+        private int alfa = 0;
+        private int beta = 0;
+        private int gama = 0;
+        public Form1()
+        {  
+            InitializeComponent();
+            //Opening camera when the form started running.
+            fillin = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+            cap = new VideoCaptureDevice(fillin[0].MonikerString);
+            cap.NewFrame += Cap_NewFrame;
+            cap.Start();
+        }
+        private void Cap_NewFrame(object sender, NewFrameEventArgs eventArgs)
+        {
+            //Getting some clone of current frame from camera.
+            Bitmap image4 = (Bitmap)eventArgs.Frame.Clone();
+            Bitmap image1 = (Bitmap)eventArgs.Frame.Clone();
+            Bitmap image2 = (Bitmap)eventArgs.Frame.Clone();
+            Bitmap image3 = (Bitmap)eventArgs.Frame.Clone();
+            //Showing the frames which obtained from camera.
+            pictureBox1.Image = image3; 
+            
+            //For Blue objects.
+            EuclideanColorFiltering filter = new EuclideanColorFiltering();
+            filter.CenterColor = new RGB(Color.FromArgb(30,30, 255));
+            filter.Radius = 160;
+            filter.ApplyInPlace(image2);
+            filtB(image2);
+
+            //For Red objects.
+            filter.CenterColor = new RGB(Color.FromArgb(220, 30, 30));
+            filter.Radius = 100;
+            filter.ApplyInPlace(image4);
+            filtR(image4);
+
+            //For Green objects.
+            filter.CenterColor = new RGB(Color.FromArgb(30, 255, 30));
+            filter.Radius = 160;
+            filter.ApplyInPlace(image1);
+            filtG(image1);
+        }
+        public void filtR(Bitmap image)
+        {  
+            BlobCounter blobCounter = new BlobCounter();
+            blobCounter.MinWidth = 60;
+            blobCounter.MinHeight = 60;
+            blobCounter.FilterBlobs = true;
+            //Firstly, making the frame gray that only filters red pixels. 
+            BitmapData objectsData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
+            Grayscale grayscaleFilter = new Grayscale(0.2125, 0.7154, 0.0721);
+            UnmanagedImage grayImage = grayscaleFilter.Apply(new UnmanagedImage(objectsData));
+            image.UnlockBits(objectsData);
+
+            // Red pixels are marked via blobcounter in gray image.
+            blobCounter.CoupledSizeFiltering = true;
+            blobCounter.ProcessImage(image);
+            // Creating a rectangular with marked pixels.
+            Rectangle[] rects = blobCounter.GetObjectsRectangles();
+            Blob[] blobs = blobCounter.GetObjectsInformation();  
+            try
+            {
+                image.Clone();
+            }
+            catch { }
+            foreach (Rectangle recs in rects)
+            {
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects.Length > 0)
+                    {
+                        // Creating a rectangle to picturebox with marked pixels from filtered frame
+                        Rectangle objectRect = rects[i];
+                        Graphics t = pictureBox1.CreateGraphics();
+                        using (Pen pen = new Pen(Color.FromArgb(3, 26, 252), 2))
+                        {
+                            t.DrawRectangle(pen, objectRect);
+                        }
+                        if (i == 0)
+                            alfa = 2;
+                        else
+                            alfa = i * 50; 
+                        // Calculating the area of rectangular and typing it on left upper corner of frame. 
+                        int area = objectRect.Width * objectRect.Height;
+                        t.DrawString(area.ToString(), new Font("Arial", 12), Brushes.Red, new System.Drawing.Point(alfa, 1));
+                        t.Dispose();
+                    }
+                }
+            }
+        }
+        public void filtB(Bitmap imageb)
+        {
+            BlobCounter blobCounter1 = new BlobCounter();
+            blobCounter1.MinWidth = 100;
+            blobCounter1.MinHeight = 100;
+            blobCounter1.FilterBlobs = true;
+
+            BitmapData objectsData = imageb.LockBits(new Rectangle(0, 0, imageb.Width, imageb.Height), ImageLockMode.ReadOnly, imageb.PixelFormat);
+            Grayscale grayscaleFilter1 = new Grayscale(0.2125, 0.7154, 0.0721);
+            UnmanagedImage grayImage = grayscaleFilter1.Apply(new UnmanagedImage(objectsData));
+            imageb.UnlockBits(objectsData);
+
+            blobCounter1.CoupledSizeFiltering = true;
+            blobCounter1.ProcessImage(imageb);
+            Rectangle[] rects = blobCounter1.GetObjectsRectangles();
+            Blob[] blobs = blobCounter1.GetObjectsInformation();
+            blobCounter1.ObjectsOrder = ObjectsOrder.Size;   
+            try
+            {
+                imageb.Clone();
+            }
+            catch { }
+            foreach (Rectangle recs in rects)
+            {
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects.Length > 0)
+                    {
+                        Rectangle objectRect = rects[i];
+                        Graphics t = pictureBox1.CreateGraphics();
+                        using (Pen pen = new Pen(Color.FromArgb(3, 252, 26), 2))
+                        {
+                            t.DrawRectangle(pen, objectRect);
+                        }
+                        if (i == 0)
+                            beta = 2;
+                        else
+                            beta = i * 50;
+                        int area = objectRect.Width * objectRect.Height;
+                        t.DrawString(area.ToString(), new Font("Arial", 12), Brushes.Blue, new System.Drawing.Point(beta, 15));
+
+                        t.Dispose();
+                    }
+                }
+            }
+        }
+
+        public void filtG(Bitmap imageg)
+        {
+           
+            BlobCounter blobCounter1 = new BlobCounter();
+            blobCounter1.MinWidth = 100;
+            blobCounter1.MinHeight = 100;
+            blobCounter1.FilterBlobs = true;
+            SimpleShapeChecker shapeChecker = new SimpleShapeChecker();
+            BitmapData objectsData = imageg.LockBits(new Rectangle(0, 0, imageg.Width, imageg.Height), ImageLockMode.ReadOnly, imageg.PixelFormat);
+            Grayscale grayscaleFilter1 = new Grayscale(0.2125, 0.7154, 0.0721);
+            UnmanagedImage grayImage = grayscaleFilter1.Apply(new UnmanagedImage(objectsData));
+            imageg.UnlockBits(objectsData);
+           
+            blobCounter1.CoupledSizeFiltering = true;
+            blobCounter1.ProcessImage(imageg);
+            Blob[] blobs = blobCounter1.GetObjectsInformation();
+            Rectangle[] rects = blobCounter1.GetObjectsRectangles();
+            blobCounter1.ObjectsOrder = ObjectsOrder.Size;
+            try
+            {
+                imageg.Clone();
+            }
+            catch { }
+            foreach (Rectangle recs in rects)
+            {
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects.Length > 0)
+                    {
+                        Rectangle objectRect = rects[i];
+                        Graphics t = pictureBox1.CreateGraphics();
+                        using (Pen pen = new Pen(Color.FromArgb(252, 3, 26), 2))
+                        {
+                            t.DrawRectangle(pen, objectRect);
+                        }
+                        if (i == 0)
+                            gama = 2;
+                        else
+                            gama = i * 50;
+                        int area = objectRect.Width * objectRect.Height;
+                        t.DrawString(area.ToString(), new Font("Arial", 12), Brushes.Blue, new System.Drawing.Point(gama, 15));
+
+                        t.Dispose();
+                    }
+                }
+            }
+        }
+
+        private void closed(object sender, FormClosedEventArgs e)
+        {
+            // Closing the camera when the form is closed.
+            if(cap.IsRunning)
+            {
+                cap.Stop();
+            }
+        }
+    }
+}
+
