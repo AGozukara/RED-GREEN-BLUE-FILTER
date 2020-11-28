@@ -1,2 +1,2 @@
 # RED-GREEN-BLUE FILTER
- Camera filtering application for red, green and blue objects.
+ Camera filtering application for red, green and blue objects and rectangular's areas
